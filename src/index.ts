@@ -1,4 +1,4 @@
-import * as functions from "firebase-functions";
+import { Request, Response } from "express";
 import moment from "moment";
 import axios from "axios";
 import { google } from "googleapis";
@@ -8,23 +8,17 @@ import {
   REST_CONTENT_TYPE_JSON
 } from "./constants";
 
-const config = functions.config();
-
-const backup_collections = config.collections.split(",") || ["users"];
-
 console.log(process.env.FIREBASE_CONFIG);
 
-exports.backup = functions.https.onRequest(async (req, res) => {
+exports.backup = async (req: Request, res: Response) => {
   /**
    * `process.env.GCLOUD_PROJECT`: Provides the Firebase project ID
    */
   const projectId = process.env.GCLOUD_PROJECT;
 
-  /**
-   * `process.env.FIREBASE_CONFIG`: Provides the Firebase CONFIG
-   */
   const auth = await google.auth.getClient({
     scopes: GOOGLE_API_CLIENT_AUTH_SCOPES,
+    keyFilename: process.env.GOOGLE_APPLICATION_CREDENTIALS,
     projectId
   });
 
@@ -72,7 +66,7 @@ exports.backup = functions.https.onRequest(async (req, res) => {
   /**
    * Collections to backup
    */
-  const collectionParam = backup_collections;
+  const collectionParam = ["users"];
   if (collectionParam) {
     body.collectionIds = collectionParam;
   }
@@ -87,4 +81,4 @@ exports.backup = functions.https.onRequest(async (req, res) => {
 
     return res.status(500).send(`Could not start backup: ${e}`);
   }
-});
+};
