@@ -3,6 +3,16 @@ import moment from "moment";
 import axios from "axios";
 import { google } from "googleapis";
 import { FirestoreRequestBodyType } from "./types/FirestoreRequestBodyType";
+import {
+  GOOGLE_API_CLIENT_AUTH_SCOPES,
+  REST_CONTENT_TYPE_JSON
+} from "./constants";
+
+const config = functions.config();
+
+const backup_collections = config.collections.split(",") || ["users"];
+
+console.log(process.env.FIREBASE_CONFIG);
 
 exports.backup = functions.https.onRequest(async (req, res) => {
   /**
@@ -14,24 +24,23 @@ exports.backup = functions.https.onRequest(async (req, res) => {
    * `process.env.FIREBASE_CONFIG`: Provides the Firebase CONFIG
    */
   const auth = await google.auth.getClient({
-    scopes: ["https://www.googleapis.com/auth/datastore"],
-    keyFilename: `./keyfiles/${projectId}`,
+    scopes: GOOGLE_API_CLIENT_AUTH_SCOPES,
     projectId
   });
 
   const accessTokenResponse = await auth.getAccessToken();
   const accessToken = accessTokenResponse.token;
 
+  console.log(accessToken, accessTokenResponse);
+
   if (!accessToken || !accessTokenResponse) {
     return res
       .status(500)
-      .send(
-        `Invalid Access Token. Service Account may not have valid authorization`
-      );
+      .send(`Invalid Access Token. Account may not have valid authorization`);
   }
 
   const headers = {
-    "Content-Type": "application/json",
+    "Content-Type": REST_CONTENT_TYPE_JSON,
     Authorization: `"Bearer ${accessToken}`
   };
 
@@ -63,26 +72,19 @@ exports.backup = functions.https.onRequest(async (req, res) => {
   /**
    * Collections to backup
    */
-  // TODO: use firebase.config()
-  const collectionParam = ["users"];
+  const collectionParam = backup_collections;
   if (collectionParam) {
     body.collectionIds = collectionParam;
   }
   const url = `https://firestore.googleapis.com/v1beta1/projects/${projectId}/databases/(default):exportDocuments`;
   try {
-    const response = await axios.post(url, body, { headers: headers });
-    return res
-      .status(200)
-      .send(response.data)
-      .end();
+    const response = await axios.post(url, body, { headers });
+    return res.status(200).send(response.data);
   } catch (e) {
     if (e.response) {
       console.warn(e.response.data);
     }
 
-    return res
-      .status(500)
-      .send(`Could not start backup: ${e}`)
-      .end();
+    return res.status(500).send(`Could not start backup: ${e}`);
   }
 });
