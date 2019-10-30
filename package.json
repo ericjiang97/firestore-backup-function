@@ -4,7 +4,7 @@
     "build": "tsc",
     "lint": "tslint --project tsconfig.json",
     "predeploy": "npm run lint",
-    "deploy": "tsc && gcloud functions deploy backup --trigger-http --runtime nodejs10 --region asia-east2"
+    "deploy": "tsc && gcloud functions deploy backup --trigger-http --runtime nodejs10 --region asia-east2 --env-vars-file .env.yaml"
   },
   "engines": {
     "node": "10"
