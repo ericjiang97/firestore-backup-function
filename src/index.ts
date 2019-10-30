@@ -4,32 +4,23 @@ import axios from "axios";
 import { google } from "googleapis";
 import { FirestoreRequestBodyType } from "./types/FirestoreRequestBodyType";
 
-console.log(process.env.FIREBASE_CONFIG);
-
 exports.backup = async (req: Request, res: Response) => {
   /**
-   * `process.env.GCLOUD_PROJECT`: Provides the Firebase project ID
+   * `process.env.GCP_PROJECT`: Provides the Firebase project ID
    */
-  const projectId = process.env.GCLOUD_PROJECT;
+  const projectId = process.env.GOOGLE_CLOUD_PROJECT_ID;
 
-  const auth = new google.auth.GoogleAuth({
-    // Scopes can be specified either as an array or as a single, space-delimited string.
+  const auth = new google.auth.JWT({
+    keyFile: process.env.GOOGLE_APPLICATION_CREDENTIALS,
     scopes: [
       "https://www.googleapis.com/auth/datastore",
       "https://www.googleapis.com/auth/cloud-platform"
-    ],
-    keyFile: process.env.GOOGLE_APPLICATION_CREDENTIALS,
-    projectId
+    ]
   });
 
-  // get auth client from keyfile and scopes
-  const authClient = await auth.getClient();
+  const tokens = await auth.authorize();
 
-  const accessToken = await authClient.getAccessToken();
-
-  console.log(accessToken);
-
-  if (!accessToken) {
+  if (!tokens) {
     return res
       .status(500)
       .send(`Invalid Access Token. Account may not have valid authorization`);
@@ -37,7 +28,7 @@ exports.backup = async (req: Request, res: Response) => {
 
   const headers = {
     "Content-Type": "application/json",
-    Authorization: `"Bearer ${accessToken.token}`
+    Authorization: `"Bearer ${tokens.access_token}`
   };
 
   /**
@@ -65,7 +56,7 @@ exports.backup = async (req: Request, res: Response) => {
   if (collectionParam) {
     body.collectionIds = collectionParam;
   }
-  const url = `https://firestore.googleapis.com/v1beta2/projects/${projectId}/databases/(default):exportDocuments`;
+  const url = `https://firestore.googleapis.com/v1beta2/projects/${projectId}/databases/(default):exportDocuments?access_token=${tokens.access_token}`;
   try {
     const response = await axios.post(url, body, { headers });
     return res.status(200).send(response.data);
@@ -76,4 +67,5 @@ exports.backup = async (req: Request, res: Response) => {
 
     return res.status(500).send(`Could not start backup: ${e}`);
   }
+  return res.status(200).send("hello");
 };
