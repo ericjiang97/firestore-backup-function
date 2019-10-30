@@ -14,3 +14,9 @@
 .gitignore
 
 node_modules
+
+src
+
+# Typescript 
+tsconfig.json
+tslint.json
